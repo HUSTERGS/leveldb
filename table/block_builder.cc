@@ -63,6 +63,7 @@ Slice BlockBuilder::Finish() {
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
+  // 将每一个restart_ point存放在buffer中，最后存放一个restarts_的size
   PutFixed32(&buffer_, restarts_.size());
   finished_ = true;
   return Slice(buffer_);
@@ -78,10 +79,12 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   if (counter_ < options_->block_restart_interval) {
     // See how much sharing to do with previous string
     const size_t min_length = std::min(last_key_piece.size(), key.size());
+    // 通过循环找到相同的位置下标
     while ((shared < min_length) && (last_key_piece[shared] == key[shared])) {
       shared++;
     }
   } else {
+    // 当达到了block_restart_interval的时候，就存储完整的键
     // Restart compression
     restarts_.push_back(buffer_.size());
     counter_ = 0;
@@ -100,6 +103,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   // Update state
   last_key_.resize(shared);
   last_key_.append(key.data() + shared, non_shared);
+  // last_key_变为现在的key，不知道上面的计算是为了什么，通过进一步的计算来判断是否出现问题？
   assert(Slice(last_key_) == key);
   counter_++;
 }

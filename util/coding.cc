@@ -17,9 +17,11 @@ void PutFixed64(std::string* dst, uint64_t value) {
   EncodeFixed64(buf, value);
   dst->append(buf, sizeof(buf));
 }
-
+// 最后返回的指针可以与dst进行计算，得到最终编码的长度
 char* EncodeVarint32(char* dst, uint32_t v) {
   // Operate on characters as unsigneds
+  // 相当于每7位进行一次编码，如果每超过1个byte就将对应的最高位置为1
+  // 由于ptr是uint8_t的类型，所以每一次赋值的时候就会只截取8位
   uint8_t* ptr = reinterpret_cast<uint8_t*>(dst);
   static const int B = 128;
   if (v < (1 << 7)) {
@@ -47,11 +49,12 @@ char* EncodeVarint32(char* dst, uint32_t v) {
 }
 
 void PutVarint32(std::string* dst, uint32_t v) {
+  // 32位的数字经过Varint编码之后最多可能需要5 * 8位
   char buf[5];
   char* ptr = EncodeVarint32(buf, v);
   dst->append(buf, ptr - buf);
 }
-
+// 其实上面的EncodeVarint32也可以这么写
 char* EncodeVarint64(char* dst, uint64_t v) {
   static const int B = 128;
   uint8_t* ptr = reinterpret_cast<uint8_t*>(dst);
@@ -75,6 +78,7 @@ void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
 }
 
 int VarintLength(uint64_t v) {
+  // 就是有多少个7位需要编码
   int len = 1;
   while (v >= 128) {
     v >>= 7;

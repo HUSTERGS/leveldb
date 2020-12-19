@@ -66,6 +66,7 @@ class LEVELDB_EXPORT Slice {
 
   // Drop the first "n" bytes from this slice.
   void remove_prefix(size_t n) {
+    // 直接更改指针以及size
     assert(n <= size());
     data_ += n;
     size_ -= n;

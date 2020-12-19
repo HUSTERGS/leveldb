@@ -20,12 +20,18 @@ struct ReadOptions;
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.
+// 对于某一个文件，从某一偏移量(offset)开始的某一个size的值，但是其中并没有包含具体的文件
+// 信息。就像是一个跨文件的指针？而且指向的对象的类型是不固定的
 class BlockHandle {
  public:
+  // 这种长度都是指将数据serialization之后的长度，而不是各项成员长度的加和
+  // 由于一个uint64_t的数据使用Varint来存储的话最多可能会占用5个byte的空间
   // Maximum encoding length of a BlockHandle
   enum { kMaxEncodedLength = 10 + 10 };
 
   BlockHandle();
+
+  // getter 以及 setter
 
   // The offset of the block in the file.
   uint64_t offset() const { return offset_; }
@@ -50,6 +56,8 @@ class Footer {
   // Encoded length of a Footer.  Note that the serialization of a
   // Footer will always occupy exactly this many bytes.  It consists
   // of two block handles and a magic number.
+
+  // 保证Footer编码之后的长度是固定的
   enum { kEncodedLength = 2 * BlockHandle::kMaxEncodedLength + 8 };
 
   Footer() = default;

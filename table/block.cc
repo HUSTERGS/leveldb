@@ -18,28 +18,38 @@
 namespace leveldb {
 
 inline uint32_t Block::NumRestarts() const {
+  // 不清楚这个地方为什么是必需大于32位，查询到的相关信息大概说的是调用这个方法说明Block中存放的是
+  // 重启相关的信息，其中至少会包含32位的信息
   assert(size_ >= sizeof(uint32_t));
+  // 信息保存在最后的32位？尝试进行解析
   return DecodeFixed32(data_ + size_ - sizeof(uint32_t));
 }
 
 Block::Block(const BlockContents& contents)
     : data_(contents.data.data()),
       size_(contents.data.size()),
-      owned_(contents.heap_allocated) {
+      owned_(contents.heap_allocated /* 分配在堆空间说明是自己拥有的？或者说空间将由Block自己来管理 */) {
   if (size_ < sizeof(uint32_t)) {
+    // size_为0说明有错误
     size_ = 0;  // Error marker
   } else {
+    // 能够保存的最多的restarts的信息的个数，其中每一个restart应该是占用了uint32_t，应该是最后4bytes应该用来保存了其他的信息
+    // 可以与NumberRestarts对应上
     size_t max_restarts_allowed = (size_ - sizeof(uint32_t)) / sizeof(uint32_t);
     if (NumRestarts() > max_restarts_allowed) {
       // The size is too small for NumRestarts()
       size_ = 0;
     } else {
+      //     1    + numRestart * sizeof(uint32_t)
+      // 存放元信息      每一个restart的信息
       restart_offset_ = size_ - (1 + NumRestarts()) * sizeof(uint32_t);
     }
   }
 }
 
 Block::~Block() {
+  // 如果底层的空间是在heap上分配的话，那么说明需要Block自己来管理(owned_)，所以在析构函数中就
+  // 将空间释放
   if (owned_) {
     delete[] data_;
   }
@@ -73,7 +83,7 @@ static inline const char* DecodeEntry(const char* p, const char* limit,
   }
   return p;
 }
-
+// 迭代器先跳过
 class Block::Iter : public Iterator {
  private:
   const Comparator* const comparator_;
@@ -252,6 +262,7 @@ class Block::Iter : public Iterator {
   }
 };
 
+// 根据comparator返回一个新的迭代器
 Iterator* Block::NewIterator(const Comparator* comparator) {
   if (size_ < sizeof(uint32_t)) {
     return NewErrorIterator(Status::Corruption("bad block contents"));

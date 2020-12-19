@@ -29,6 +29,7 @@ class Block {
   Iterator* NewIterator(const Comparator* comparator);
 
  private:
+  // 定义了一个Iterator
   class Iter;
 
   uint32_t NumRestarts() const;
@@ -36,7 +37,7 @@ class Block {
   const char* data_;
   size_t size_;
   uint32_t restart_offset_;  // Offset in data_ of restart array
-  bool owned_;               // Block owns data_[]
+  bool owned_;               // Block owns data_[]，按照底层的格式应该指的是在heap上分配的空间
 };
 
 }  // namespace leveldb

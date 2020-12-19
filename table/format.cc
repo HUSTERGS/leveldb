@@ -32,7 +32,11 @@ void Footer::EncodeTo(std::string* dst) const {
   const size_t original_size = dst->size();
   metaindex_handle_.EncodeTo(dst);
   index_handle_.EncodeTo(dst);
+  // resize方法直接调整有效数据区的大小，而不是改变capacity，如果是增加的话是直接
+  // 在末尾添加空字符
   dst->resize(2 * BlockHandle::kMaxEncodedLength);  // Padding
+  // 不懂Magic number的作用是什么？
+  // 通过magic number来判断文件类型？或者说判断是否损坏？
   PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));
   PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber >> 32));
   assert(dst->size() == original_size + kEncodedLength);
@@ -61,6 +65,8 @@ Status Footer::DecodeFrom(Slice* input) {
   return result;
 }
 
+
+// 先跳过这个函数
 Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
                  const BlockHandle& handle, BlockContents* result) {
   result->data = Slice();
