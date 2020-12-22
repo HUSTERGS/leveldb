@@ -46,11 +46,26 @@
   **暂时跳过了`ReadBlock`函数**
   
 - `table/block_builder.h/.cc`
+  
   由于MemTable在刷入SST的时候，会保持键的有序性，所以以下这种方法可以一定程度上减少键的存储空间
   会有一个叫做restart point的东西。在存储键的时候，不会直接存储键本身，而是存储某一个键与上一个键不同的部分，以及一些元数据，整体格式如下
-  `[Shared key length] + [Unshared key length] + [Value length] + [Unshared key content] + [Value]`。
+  
+  `[Shared key length] + [Unshared key length] + [Value length] + [Unshared key content] + [Value]`
+  
   每隔`block_restart_interval`就会存储一个完整的键，所以可以通过二分查找interval位置的键，然后再在其interval中顺序查找对应的键
   
 
 - `table/filter_block.h/.cc`
+  
+  建议直接看cc文件中的注释，应该写的还比较清楚。主要需要理解的就是filter和block的对应关系以及filter的具体保存结构
+
+- `util/bloom.cc`
+
+  提供了布隆过滤器的默认实现，需要注意的是所谓的"k个hash函数"的实现，实际上只用了一个hash函数，然后通过迭代的方法来得到后续的hash值
+
+- `table/table.h/.cc`
+
+  其中对于`file_Read(uint64_t offset, size_t n, Slice* result,
+  char* scratch)`终于理解了参数中`result`以及`scratch`两个参数的含义了。因为Slice类型本身并不对数据进行管理，而是**指向**某一具体的数据，
+  所以需要有一个地方实际存储char *，也就是Slice中的data_成员，这就是`scratch`参数的含义
   

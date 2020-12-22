@@ -40,6 +40,8 @@ class LEVELDB_EXPORT FilterPolicy {
   //
   // Warning: do not change the initial contents of *dst.  Instead,
   // append the newly constructed filter to *dst.
+  // 有n个key按照顺序保存在keys中，然后通过计算filter，将结果保存在dst的结尾
+  // 注意不能修改dst原本的内容
   virtual void CreateFilter(const Slice* keys, int n,
                             std::string* dst) const = 0;
 

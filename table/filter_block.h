@@ -24,9 +24,14 @@ class FilterPolicy;
 // A FilterBlockBuilder is used to construct all of the filters for a
 // particular Table.  It generates a single string which is stored as
 // a special block in the Table.
-//
+
+// 生成了一个单个的string，存放在Table中的一个特别的block中
+
 // The sequence of calls to FilterBlockBuilder must match the regexp:
 //      (StartBlock AddKey*)* Finish
+
+// 函数的调用顺序要遵循上述的规则
+
 class FilterBlockBuilder {
  public:
   explicit FilterBlockBuilder(const FilterPolicy*);
@@ -42,7 +47,7 @@ class FilterBlockBuilder {
   void GenerateFilter();
 
   const FilterPolicy* policy_;
-  std::string keys_;             // Flattened key contents
+  std::string keys_;             // Flattened key contents 所有需要传入，用于建立filter的数据，直接拼接在一起
   std::vector<size_t> start_;    // Starting index in keys_ of each key
   std::string result_;           // Filter data computed so far
   std::vector<Slice> tmp_keys_;  // policy_->CreateFilter() argument
