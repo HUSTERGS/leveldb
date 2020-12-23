@@ -66,7 +66,7 @@ Status Footer::DecodeFrom(Slice* input) {
 }
 
 
-// 先跳过这个函数
+// 根据BlockHandle从指定的RandomAccess文件中获得BlockContent
 Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
                  const BlockHandle& handle, BlockContents* result) {
   result->data = Slice();
@@ -103,6 +103,13 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   switch (data[n]) {
     case kNoCompression:
       if (data != buf) {
+        // 其实不懂为什么这个地方有两种可能，data不应该始终等于buf吗
+
+        // 根据学长的代码解释可能就是
+        // 文件实现为我们提供了一些其他数据的指针。 直接使用它(在文件打开时,假设其处于存活的状态)。
+        // 这里的意思是，防止有些file接口的实现中，会使用别的buffer，而不是我们传入的buf，
+        // 这里判断一下就是为了防止内存泄漏
+        // 如果data不等于buf就说明file->Read函数并没有使用传入的buf，而是使用了自己的buf
         // File implementation gave us pointer to some other data.
         // Use it directly under the assumption that it will be live
         // while the file is open.

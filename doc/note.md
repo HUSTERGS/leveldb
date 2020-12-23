@@ -43,7 +43,8 @@
     主要就是保存了两个`BlockHandle`，一个是`metaindex_handle_`一个是`index_handle_`，以及一个魔数(*magic number*)
     
     这两个BlockHandle分别指向了sst文件中的两个index block
-  **暂时跳过了`ReadBlock`函数**
+  
+  ~~**暂时跳过了`ReadBlock`函数**~~
   
 - `table/block_builder.h/.cc`
   
@@ -54,6 +55,7 @@
   
   每隔`block_restart_interval`就会存储一个完整的键，所以可以通过二分查找interval位置的键，然后再在其interval中顺序查找对应的键
   
+  如果没有理解错的话，通过BlockBuilder建立的数据中并没有包含类型以及crc字段，应该是上层调用额外添加的数据
 
 - `table/filter_block.h/.cc`
   
