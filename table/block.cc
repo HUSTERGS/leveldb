@@ -17,6 +17,7 @@
 
 namespace leveldb {
 
+// 返回重启点的个数，每一个block的最后32位用来存储这个信息
 inline uint32_t Block::NumRestarts() const {
   // 不清楚这个地方为什么是必需大于32位，查询到的相关信息大概说的是调用这个方法说明Block中存放的是
   // 重启相关的信息，其中至少会包含32位的信息
@@ -36,10 +37,15 @@ Block::Block(const BlockContents& contents)
     // 能够保存的最多的restarts的信息的个数，其中每一个restart应该是占用了uint32_t，应该是最后4bytes应该用来保存了其他的信息
     // 可以与NumberRestarts对应上
     size_t max_restarts_allowed = (size_ - sizeof(uint32_t)) / sizeof(uint32_t);
+    // NumberRestarts返回的是`设定`的重启点的个数，而max_restarts_allowed是`实际允许`的
+    // 重启点的个数，如果`设定`的超过了`允许`的，那么就说明有问题
     if (NumRestarts() > max_restarts_allowed) {
       // The size is too small for NumRestarts()
       size_ = 0;
     } else {
+      // 重启点数组的长度（也就是最后32位）以及实际存放重启点的数组元素
+      // 整体的排布可以理解为
+      // [实际数据] (restart_offset) [重启点数组] + [重启点数据长度]
       //     1    + numRestart * sizeof(uint32_t)
       // 存放元信息      每一个restart的信息
       restart_offset_ = size_ - (1 + NumRestarts()) * sizeof(uint32_t);
@@ -65,10 +71,15 @@ Block::~Block() {
 static inline const char* DecodeEntry(const char* p, const char* limit,
                                       uint32_t* shared, uint32_t* non_shared,
                                       uint32_t* value_length) {
+  // 基本格式如下
+  // length的类型均为`Varint32`
+  // [Shared key length] + [Unshared key length] + [Value length] + [Unshared key content] + [Value]
+  // 理论上最开始最少应该有三个字节用来存储三个length
   if (limit - p < 3) return nullptr;
   *shared = reinterpret_cast<const uint8_t*>(p)[0];
   *non_shared = reinterpret_cast<const uint8_t*>(p)[1];
   *value_length = reinterpret_cast<const uint8_t*>(p)[2];
+  // 三个字节的最高位都没有出现1，按照varint的规则就说明后面没有多的数据
   if ((*shared | *non_shared | *value_length) < 128) {
     // Fast path: all three values are encoded in one byte each
     p += 3;
@@ -103,15 +114,20 @@ class Block::Iter : public Iterator {
   }
 
   // Return the offset in data_ just past the end of the current entry.
+  // 返回下一条记录的入口，也就是在data中的偏移量
   inline uint32_t NextEntryOffset() const {
+    // (data_) [记录1...i] [当前记录key] (value_.data()) [当前记录value] (value_.data() + value_.size())
     return (value_.data() + value_.size()) - data_;
   }
-
+  // 返回重启点数组中第index个元素中的内容，也就是第index个重启点的偏移量
   uint32_t GetRestartPoint(uint32_t index) {
     assert(index < num_restarts_);
     return DecodeFixed32(data_ + restarts_ + index * sizeof(uint32_t));
   }
 
+  // 指向重启点的数据
+  // 重启点存储的是完整的键，那么shared key length就是0，然后unshared key length就是
+  // 完整的键的长度
   void SeekToRestartPoint(uint32_t index) {
     key_.clear();
     restart_index_ = index;
@@ -149,7 +165,8 @@ class Block::Iter : public Iterator {
     assert(Valid());
     ParseNextKey();
   }
-
+  // 找到上一个重启点
+  // 然后开始不断读取记录，直到NextEntryOffset返回值为之前的current_
   void Prev() override {
     assert(Valid());
 
@@ -171,6 +188,9 @@ class Block::Iter : public Iterator {
     } while (ParseNextKey() && NextEntryOffset() < original);
   }
 
+  // 先通过二分查找寻找所有的重启点的数据
+  // 找到比目标数据小的重启点
+  // 然后从重启点开始往后查找
   void Seek(const Slice& target) override {
     // Binary search in restart array to find the last restart point
     // with a key < target
@@ -232,6 +252,7 @@ class Block::Iter : public Iterator {
     value_.clear();
   }
 
+  // 尝试获取下一条记录，如果成功那么key,value都会被解析出来，并返回一个true
   bool ParseNextKey() {
     current_ = NextEntryOffset();
     const char* p = data_ + current_;
@@ -245,14 +266,22 @@ class Block::Iter : public Iterator {
 
     // Decode next entry
     uint32_t shared, non_shared, value_length;
+    // 返回了unshared key的起始部分
     p = DecodeEntry(p, limit, &shared, &non_shared, &value_length);
     if (p == nullptr || key_.size() < shared) {
       CorruptionError();
       return false;
     } else {
+      // 先将key压缩到`共享key`的长度，这样上一个键的非共享的部分就会被去掉
       key_.resize(shared);
+      // 然后再加上当前key的`非共享key`部分，那么当前的key就是完整的key了
       key_.append(p, non_shared);
       value_ = Slice(p + non_shared, value_length);
+
+      // 这个循环不是很懂在干什么
+      // 大概就是把restart_index_增加到对应的位置，但是不是很懂为啥要用循环
+      // QUES: 理论上应该一次最多只能增加一个？
+
       while (restart_index_ + 1 < num_restarts_ &&
              GetRestartPoint(restart_index_ + 1) < current_) {
         ++restart_index_;

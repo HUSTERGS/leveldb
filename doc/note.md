@@ -1,9 +1,15 @@
 开始看代码
 
 根据include顺序开始看
-- `include/export.h` 意义不明的东西
-- `include/slice.h` 将`const char *`进行封装形成的`Slice`类
-- `include/status.h` 定义了几种不同的错误类型
+- `include/export.h` 主要是根据不同的平台以及编译选项，设置宏`LEVELDB_EXPORT`
+  ```c
+  // 对于WIN32可能是
+  __declspec(dllimport)
+  // 而对于其他的可能是
+  __attribute__((visibility("default")))
+  ```
+- `include/slice.h` 将`const char *`进行封装形成的`Slice`类，实现了对应的方法
+- `include/status.h/.cc` 定义了几种不同的错误类型
     ```c++
     enum Code {
       kOk = 0,
@@ -14,8 +20,17 @@
       kIOError = 5
       };
     ```
-- `include/comparator.h`定一个一个比较器的基类，需要具体实现其中的方法
-- `include/iterator.h`
+    以及一个名为`Status`的类，只有一个成员，其内部表示如下，相当于对状态码以及想要包含了信息做了一个封装
+    ```c++
+    // OK status has a null state_.  Otherwise, state_ is a new[] array
+    // of the following form:
+    //    state_[0..3] == length of message
+    //    state_[4]    == code
+    //    state_[5..]  == message
+    const char * status_;
+    ```
+- `include/comparator.h`定义了一个比较器的基类
+- `include/iterator.h` 定义了一个迭代器的基类
 - `utils/coding.h/.cc` 关于编码的部分，主要是将数字转化为string或者Slice。
     对于FixedSize一般都是直接将数字的每一个8位取出来，作为一个`uint_8`存放到char类型的缓冲区中
     而对于变长的存储以`EncodeVarint32`为例，主要参考了[这一篇博客](http://mingxinglai.com/cn/2013/01/leveldb-varint32/)
@@ -32,7 +47,7 @@
 
   如果没有理解错的话，Block应该存放了重启点的相关信息，比如所有重启点的个数以及每一个重启点的具体信息
   
-  **暂时跳过了里面的`Block::Iterator`部分**
+  ~~**暂时跳过了里面的`Block::Iterator`部分**~~
   
 
 - `table/format.h/.cc`

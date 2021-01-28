@@ -267,6 +267,8 @@ class LEVELDB_EXPORT RandomAccessFile {
   // status.
   //
   // Safe for concurrent use by multiple threads.
+  // 对于读操作，虽然参数中有一个Slice *类型的对象，但是由于Slice本身并不对数据进行管理，还是需要一个实际存储数据的地方
+  // 也就是参数scratch，最终Slice类型的result中的data_成员将会指向scratch
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const = 0;
 };

@@ -11,6 +11,7 @@
 namespace leveldb {
 
 const char* Status::CopyState(const char* state) {
+  // state_前四个字节表示message的长度，再加上code以及length就是size + 5
   uint32_t size;
   std::memcpy(&size, state, sizeof(size));
   char* result = new char[size + 5];
@@ -19,6 +20,8 @@ const char* Status::CopyState(const char* state) {
 }
 
 Status::Status(Code code, const Slice& msg, const Slice& msg2) {
+  // 最终输出的信息的格式是[msg] + [: ] + [msg2]，如果有msg2就要为中间的冒号和空格预留
+  // 两个字节的空间
   assert(code != kOk);
   const uint32_t len1 = static_cast<uint32_t>(msg.size());
   const uint32_t len2 = static_cast<uint32_t>(msg2.size());
